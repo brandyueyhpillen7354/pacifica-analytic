@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pacifica Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b10;
+    --surface: #0d1117;
+    --surface2: #131920;
+    --border: #1e2a35;
+    --accent: #00e5ff;
+    --accent2: #00ff9d;
+    --red: #ff4560;
+    --yellow: #ffd166;
+    --text: #e2e8f0;
+    --muted: #4a6070;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* grid bg */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px 60px; }
+
+  /* header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 12px var(--accent); }
+    50% { opacity: 0.5; box-shadow: 0 0 4px var(--accent); }
+  }
+
+  .logo h1 {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #fff;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--accent2);
+    border: 1px solid rgba(0,255,157,0.3);
+    border-radius: 100px;
+    padding: 4px 12px;
+    letter-spacing: 0.08em;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 1.5s infinite;
+  }
+
+  #last-update {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* stat cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .stat-card:hover { border-color: rgba(0,229,255,0.3); }
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: var(--font-head);
+    font-size: 26px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .stat-card.accent .stat-value { color: var(--accent); }
+  .stat-card.green .stat-value { color: var(--accent2); }
+  .stat-card.red .stat-value { color: var(--red); }
+  .stat-card.yellow .stat-value { color: var(--yellow); }
+
+  /* charts grid */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .chart-card.full { grid-column: 1 / -1; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+
+  .card-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 100px;
+    letter-spacing: 0.06em;
+  }
+
+  .badge-blue { background: rgba(0,229,255,0.1); color: var(--accent); border: 1px solid rgba(0,229,255,0.2); }
+  .badge-green { background: rgba(0,255,157,0.1); color: var(--accent2); border: 1px solid rgba(0,255,157,0.2); }
+  .badge-red { background: rgba(255,69,96,0.1); color: var(--red); border: 1px solid rgba(255,69,96,0.2); }
+
+  canvas { max-height: 240px; }
+
+  /* trades table */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .table-card .card-header { padding: 20px 20px 0; }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead tr { border-bottom: 1px solid var(--border); }
+
+  th {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 400;
+  }
+
+  td {
+    font-size: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(30,42,53,0.5);
+    color: var(--text);
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  .side-long { color: var(--accent2); }
+  .side-short { color: var(--red); }
+  .cause-liq { color: var(--red); font-size: 10px; }
+  .cause-normal { color: var(--muted); font-size: 10px; }
+
+  /* market selector */
+  .market-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .market-tab {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .market-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .market-tab.active { background: rgba(0,229,255,0.1); border-color: var(--accent); color: var(--accent); }
+
+  /* loading / error */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    color: var(--muted);
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg { color: var(--red); font-size: 12px; text-align: center; padding: 20px; }
+
+  /* OI bars */
+  .oi-bars { display: flex; flex-direction: column; gap: 10px; }
+
+  .oi-row { display: flex; flex-direction: column; gap: 4px; }
+
+  .oi-labels { display: flex; justify-content: space-between; font-size: 11px; }
+  .oi-symbol { color: var(--text); }
+  .oi-val { color: var(--muted); }
+
+  .oi-bar-bg {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .oi-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.6s ease;
+  }
+
+  /* funding table */
+  .funding-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .funding-item {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .funding-sym { font-size: 12px; color: var(--text); margin-bottom: 4px; }
+  .funding-rate { font-size: 14px; font-weight: 700; font-family: var(--font-head); }
+  .funding-pos { color: var(--accent2); }
+  .funding-neg { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <h1>Pacifica <span>Analytics</span></h1>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+      <div id="last-update">Fetching...</div>
+    </div>
+  </header>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card accent">
+      <div class="stat-label">24H Volume</div>
+      <div class="stat-value" id="stat-volume">—</div>
+      <div class="stat-sub">across all markets</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Open Interest</div>
+      <div class="stat-value" id="stat-oi">—</div>
+      <div class="stat-sub">total notional</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">24H Liquidations</div>
+      <div class="stat-value" id="stat-liqs">—</div>
+      <div class="stat-sub">market + backstop</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Active Markets</div>
+      <div class="stat-value" id="stat-markets">—</div>
+      <div class="stat-sub">live pairs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Top Market</div>
+      <div class="stat-value" id="stat-top">—</div>
+      <div class="stat-sub">by 24h volume</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Funding</div>
+      <div class="stat-value" id="stat-funding">—</div>
+      <div class="stat-sub">across all pairs</div>
+    </div>
+  </div>
+
+  <!-- Market Tabs -->
+  <div class="market-tabs" id="market-tabs"></div>
+
+  <!-- Charts Row -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">Volume by Market</div>
+        <div class="card-badge badge-blue">24H</div>
+      </div>
+      <canvas id="chart-volume"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">Open Interest by Market</div>
+        <div class="card-badge badge-green">LIVE</div>
+      </div>
+      <div class="oi-bars" id="oi-bars"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">Long vs Short Trades</div>
+        <div class="card-badge badge-blue">RECENT</div>
+      </div>
+      <canvas id="chart-sides"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">Trade Causes</div>
+        <div class="card-badge badge-red">BREAKDOWN</div>
+      </div>
+      <canvas id="chart-causes"></canvas>
+    </div>
+  </div>
+
+  <!-- Funding Rates -->
+  <div class="chart-card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <div class="card-title">Funding Rates</div>
+      <div class="card-badge badge-green">LIVE</div>
+    </div>
+    <div class="funding-grid" id="funding-grid"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+  </div>
+
+  <!-- Recent Trades Table -->
+  <div class="table-card">
+    <div class="card-header">
+      <div class="card-title">Recent Trades <span id="selected-market-label" style="color:var(--accent);margin-left:6px;"></span></div>
+      <div class="card-badge badge-blue">LIVE FEED</div>
+    </div>
+    <div id="trades-container">
+      <div class="loading"><div class="spinner"></div>Loading trades...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://api.pacifica.fi';
+
+const MARKETS = [
+  'BTC','ETH','SOL','BNB','ARB','OP','AVAX',
+  'WIF','JUP','TIA','SUI','APT','DOGE','LINK','INJ'
+];
+
+let selectedMarket = 'BTC';
+let pricesData = [];
+let charts = {};
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+async function fetchPrices() {
+  const r = await fetch(`${API}/api/v1/info/prices`);
+  const d = await r.json();
+  return d.success ? d.data : [];
+}
+
+async function fetchTrades(symbol) {
+  const r = await fetch(`${API}/api/v1/trades?symbol=${symbol}`);
+  const d = await r.json();
+  return d.success ? d.data : [];
+}
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+function fmtUSD(n) {
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
+  return '$' + n.toFixed(2);
+}
+
+function fmtTime(ms) {
+  const d = new Date(ms);
+  return d.toUTCString().slice(17, 25);
+}
+
+function sideLabel(side) {
+  if (side.includes('long')) return `<span class="side-long">▲ ${side.replace('_',' ')}</span>`;
+  if (side.includes('short')) return `<span class="side-short">▼ ${side.replace('_',' ')}</span>`;
+  return side;
+}
+
+function causeLabel(cause) {
+  if (cause === 'market_liquidation') return `<span class="cause-liq">LIQ</span>`;
+  if (cause === 'backstop_liquidation') return `<span class="cause-liq">BACKSTOP</span>`;
+  if (cause === 'settlement') return `<span class="cause-liq">ADL</span>`;
+  return `<span class="cause-normal">normal</span>`;
+}
+
+// ── Chart defaults ────────────────────────────────────────────────────────────
+Chart.defaults.color = '#4a6070';
+Chart.defaults.borderColor = '#1e2a35';
+Chart.defaults.font.family = "'Space Mono', monospace";
+Chart.defaults.font.size = 10;
+
+function makeBarChart(id, labels, data, color) {
+  const ctx = document.getElementById(id).getContext('2d');
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: color + '99', borderColor: color, borderWidth: 1, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#1e2a35' }, ticks: { callback: v => fmtUSD(v) } }
+      }
+    }
+  });
+}
+
+function makeDoughnut(id, labels, data, colors) {
+  const ctx = document.getElementById(id).getContext('2d');
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderColor: '#0d1117', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 10, padding: 14, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ── Render functions ──────────────────────────────────────────────────────────
+function renderStats(prices) {
+  let totalVol = 0, totalOI = 0, topSym = '', topVol = 0;
+  let fundingSum = 0, fundingCount = 0;
+
+  prices.forEach(p => {
+    const vol = parseFloat(p.volume_24h || 0);
+    const oi  = parseFloat(p.open_interest || 0);
+    const f   = parseFloat(p.funding || 0);
+    totalVol += vol;
+    totalOI  += oi;
+    fundingSum += f;
+    fundingCount++;
+    if (vol > topVol) { topVol = vol; topSym = p.symbol; }
+  });
+
+  document.getElementById('stat-volume').textContent = fmtUSD(totalVol);
+  document.getElementById('stat-oi').textContent = fmtUSD(totalOI);
+  document.getElementById('stat-markets').textContent = prices.length;
+  document.getElementById('stat-top').textContent = topSym || '—';
+  const avgF = fundingCount ? (fundingSum / fundingCount * 100).toFixed(4) : '0';
+  document.getElementById('stat-funding').textContent = avgF + '%';
+}
+
+function renderVolumeChart(prices) {
+  const sorted = [...prices].sort((a,b) => parseFloat(b.volume_24h) - parseFloat(a.volume_24h)).slice(0, 12);
+  makeBarChart('chart-volume', sorted.map(p => p.symbol), sorted.map(p => parseFloat(p.volume_24h)), '#00e5ff');
+}
+
+function renderOIBars(prices) {
+  const sorted = [...prices].sort((a,b) => parseFloat(b.open_interest) - parseFloat(a.open_interest)).slice(0, 10);
+  const maxOI = parseFloat(sorted[0]?.open_interest || 1);
+  const el = document.getElementById('oi-bars');
+  el.innerHTML = sorted.map(p => {
+    const oi = parseFloat(p.open_interest);
+    const pct = (oi / maxOI * 100).toFixed(1);
+    return `
+      <div class="oi-row">
+        <div class="oi-labels">
+          <span class="oi-symbol">${p.symbol}</span>
+          <span class="oi-val">${fmtUSD(oi)}</span>
+        </div>
+        <div class="oi-bar-bg"><div class="oi-bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+  }).join('');
+}
+
+function renderFunding(prices) {
+  const el = document.getElementById('funding-grid');
+  el.innerHTML = prices.map(p => {
+    const f = parseFloat(p.funding || 0);
+    const cls = f >= 0 ? 'funding-pos' : 'funding-neg';
+    const sign = f >= 0 ? '+' : '';
+    return `
+      <div class="funding-item">
+        <div class="funding-sym">${p.symbol}</div>
+        <div class="funding-rate ${cls}">${sign}${(f*100).toFixed(4)}%</div>
+      </div>`;
+  }).join('');
+}
+
+async function renderTrades(symbol) {
+  document.getElementById('selected-market-label').textContent = symbol;
+  const container = document.getElementById('trades-container');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+
+  try {
+    const trades = await fetchTrades(symbol);
+    if (!trades.length) { container.innerHTML = '<div class="error-msg">No recent trades found.</div>'; return; }
+
+    // Stats from trades
+    let liqCount = 0, longCount = 0, shortCount = 0;
+    let normalCount = 0, settlementCount = 0;
+    trades.forEach(t => {
+      if (t.cause === 'market_liquidation' || t.cause === 'backstop_liquidation') liqCount++;
+      if (t.cause === 'settlement') settlementCount++;
+      if (t.cause === 'normal') normalCount++;
+      if (t.side.includes('long')) longCount++;
+      if (t.side.includes('short')) shortCount++;
+    });
+
+    document.getElementById('stat-liqs').textContent = liqCount;
+
+    // Side chart
+    makeDoughnut('chart-sides',
+      ['Long', 'Short'],
+      [longCount, shortCount],
+      ['#00ff9d', '#ff4560']
+    );
+
+    // Cause chart
+    makeDoughnut('chart-causes',
+      ['Normal', 'Liquidation', 'Settlement'],
+      [normalCount, liqCount, settlementCount],
+      ['#00e5ff', '#ff4560', '#ffd166']
+    );
+
+    // Table
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Side</th>
+            <th>Price</th>
+            <th>Size</th>
+            <th>Notional</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${trades.slice(0, 30).map(t => {
+            const price = parseFloat(t.price);
+            const amt   = parseFloat(t.amount);
+            const notional = price * amt;
+            return `<tr>
+              <td>${fmtTime(t.created_at)}</td>
+              <td>${sideLabel(t.side)}</td>
+              <td>$${price.toLocaleString()}</td>
+              <td>${amt} ${symbol}</td>
+              <td>${fmtUSD(notional)}</td>
+              <td>${causeLabel(t.cause)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    container.innerHTML = `<div class="error-msg">Failed to load trades: ${e.message}</div>`;
+  }
+}
+
+function renderMarketTabs() {
+  const el = document.getElementById('market-tabs');
+  el.innerHTML = MARKETS.map(m =>
+    `<button class="market-tab ${m === selectedMarket ? 'active' : ''}" onclick="selectMarket('${m}')">${m}</button>`
+  ).join('');
+}
+
+function selectMarket(m) {
+  selectedMarket = m;
+  renderMarketTabs();
+  renderTrades(m);
+}
+
+// ── Main refresh ──────────────────────────────────────────────────────────────
+async function refresh() {
+  try {
+    pricesData = await fetchPrices();
+    if (pricesData.length) {
+      renderStats(pricesData);
+      renderVolumeChart(pricesData);
+      renderOIBars(pricesData);
+      renderFunding(pricesData);
+    }
+    await renderTrades(selectedMarket);
+    document.getElementById('last-update').textContent =
+      'Updated ' + new Date().toUTCString().slice(17, 25) + ' UTC';
+  } catch(e) {
+    document.getElementById('last-update').textContent = 'Update failed — retrying...';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderMarketTabs();
+refresh();
+setInterval(refresh, 30000); // refresh every 30s
+</script>
+</body>
+</html>
